@@ -1,0 +1,2 @@
+add_executable(GATM_TEST testSimple.cpp)
+target_link_libraries(GATM_TEST GATM_STATIC)
