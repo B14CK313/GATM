@@ -5,10 +5,15 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
-#include <cassert>
 #include <memory>
 #include "../src/instruction/Instruction.hpp"
 #include "../src/Machine.hpp"
+
+void runMachine(Machine& machine) {
+	while(machine.running()) {
+		machine.execute(machine.fetch());
+	}
+}
 
 TEST_CASE("Simple machine test") {
 	// 3*x+5
@@ -25,12 +30,10 @@ TEST_CASE("Simple machine test") {
 	machine.addInstruction(std::make_unique<Halt>());
 
 	// Act
-	while(machine.running()) {
-		machine.execute(machine.fetch());
-	}
+	runMachine(machine);
 
 	// Assert
-	assert(machine.getTop() == 17);
+	CHECK(machine.getTop() == 17);
 }
 
 TEST_CASE("Test jump") {
@@ -61,10 +64,8 @@ TEST_CASE("Test jump") {
 	machine.addInstruction(std::make_unique<Halt>());
 
 	// Act
-	while(machine.running()) {
-		machine.execute(machine.fetch());
-	}
+	runMachine(machine);
 
 	// Assert
-	assert(machine.getTop() == 0);
+	CHECK(machine.getTop() == 0);
 }
