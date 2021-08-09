@@ -2,12 +2,15 @@
 // Created by jakob on 07.08.21.
 //
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest/doctest.h"
+
+#include <cassert>
+#include <memory>
 #include "../src/instruction/Instruction.hpp"
 #include "../src/Machine.hpp"
-#include <memory>
-#include <cassert>
 
-void testSimple() {
+TEST_CASE("Simple machine test") {
 	// 3*x+5
 
 	// Arrange
@@ -30,7 +33,7 @@ void testSimple() {
 	assert(machine.getTop() == 17);
 }
 
-void testJump() {
+TEST_CASE("Test jump") {
 	/*
 	 * while(x!=0) {x = x - 2;}
 	 *
@@ -64,9 +67,4 @@ void testJump() {
 
 	// Assert
 	assert(machine.getTop() == 0);
-}
-
-int main() {
-	testSimple();
-	testJump();
 }
