@@ -2,9 +2,7 @@
 // Created by jakob on 06.08.21.
 //
 
-#ifndef GATM_INSTRUCTION_HPP
-#define GATM_INSTRUCTION_HPP
-
+#pragma once
 
 #include <stack>
 #include <string>
@@ -25,5 +23,3 @@ public:
 #include "Halt.hpp"
 #include "Copy.hpp"
 
-
-#endif //GATM_INSTRUCTION_HPP

@@ -2,9 +2,7 @@
 // Created by jakob on 06.08.21.
 //
 
-#ifndef GATM_MACHINE_HPP
-#define GATM_MACHINE_HPP
-
+#pragma once
 
 #include <array>
 #include <vector>
@@ -33,5 +31,3 @@ private:
 	int ip_;
 };
 
-
-#endif //GATM_MACHINE_HPP

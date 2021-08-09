@@ -2,8 +2,7 @@
 // Created by jakob on 07.08.21.
 //
 
-#ifndef GATM_COPY_HPP
-#define GATM_COPY_HPP
+#pragma once
 
 #include "Instruction.hpp"
 
@@ -13,5 +12,3 @@ public:
 	std::string to_string() override;
 };
 
-
-#endif //GATM_COPY_HPP
