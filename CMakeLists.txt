@@ -26,6 +26,7 @@ include(cmake/CPM.cmake)
 
 # Load dependencies
 CPMAddPackage("gh:onqtam/doctest#2.4.6")
+find_package(Threads REQUIRED)
 find_package(OpenMP REQUIRED)
 
 # Includes
@@ -34,7 +35,7 @@ find_package(OpenMP REQUIRED)
 # Setup compilation & linking
 add_executable(GATM ${GATM_SOURCE_FILES})
 add_library(GATM_STATIC STATIC ${GATM_SOURCE_FILES})
-target_link_libraries(GATM PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(GATM PUBLIC Threads::Threads OpenMP::OpenMP_CXX )
 
 # Add tests
 add_subdirectory(test)

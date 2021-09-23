@@ -1,7 +1,9 @@
+#include <chrono>
 #include <cassert>
 #include <iostream>
 #include <random>
 #include <functional>
+#include <limits>
 #include <omp.h>
 #include "Machine.hpp"
 #include "instruction/Instruction.hpp"
@@ -23,7 +25,7 @@ Machine genMachine(std::mt19937& random) {
 	result.addInstruction(std::make_unique<Immediate>(0));
 	int n = std::abs(static_cast<int>((random() % (1ul << 4))));
 	for (int i = 0; i < n; ++i) {
-		auto instruction = constructors[std::abs(static_cast<int>((random() % 9)))](static_cast<int>(random() % 1024));
+		auto instruction = constructors[std::abs(static_cast<int>((random() % 9)))](static_cast<int>(random() % 16));
 		result.addInstruction(std::move(instruction));
 	}
 	return result;
@@ -32,40 +34,59 @@ Machine genMachine(std::mt19937& random) {
 int main() {
 	// 3*x+5
 
+	std::mt19937 random{0};
+
+	constexpr std::size_t MACHINE_COUNT{50000};
+	std::array<Machine, MACHINE_COUNT> machines;
+
+	// generate machines, mt19937 is hard to use in multiple threads
+	for(auto& machine : machines) {
+		machine = genMachine(random);
+	}
+
+	constexpr int MAX_CYCLES{100};
+	constexpr int INITIAL_VALUES{10000};
 	int invalidCount{};
-	std::mt19937 random{0}; // NOLINT(cert-msc51-cpp)
+	std::array<int, MACHINE_COUNT> dists{};
 
-	constexpr std::size_t machineCount{10000};
-	std::array<Machine, machineCount> machines;
-	std::array<int, machineCount> dists{};
+	auto start = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for default(none) shared(machines, random, dists, invalidCount)
+#pragma omp parallel for default(none) reduction(+:invalidCount) shared(dists,machines)
 	for (int i = 0; i < machines.size(); ++i) {
 		auto& machine = machines[i];
-		machine = genMachine(random);
 
-		for (int j{0}; j < 10000; ++j) {
+		for (int j{0}; j < INITIAL_VALUES; ++j) {
 			int initialValue = j;
 			machine.setInitial(initialValue);
 			try {
-				while (machine.running()) {
+				for (int k{0}; k < MAX_CYCLES && machine.running(); ++k) {
 					machine.execute(machine.fetch());
 				}
 
-				int result = machine.getTop();
-				int y = 3 * initialValue + 5;
-				dists[i] += std::abs(result - y);
+				if(machine.running()) {
+					dists[i] = std::numeric_limits<int>::max();
+					++invalidCount;
+					break;
+				} else {
+					int result = machine.getTop();
+					int y = 3 * initialValue + 5;
+					dists[i] += std::abs(result - y);
+				}
 			} catch (const std::runtime_error& error) {
-				dists[i] = INT_MAX;
+				dists[i] = std::numeric_limits<int>::max();
 				++invalidCount;
 				break;
 			}
 		}
-		if(dists[i] < INT_MAX) dists[i] /= 100;
+		if(dists[i] < std::numeric_limits<int>::max()) dists[i] /= INITIAL_VALUES;
 	}
 
+	auto stop = std::chrono::high_resolution_clock::now();
+
+	std::cout << "Finished execution after " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
+	
 	int bestIndex = -1;
-	int bestDist = INT_MAX;
+	int bestDist = std::numeric_limits<int>::max();
 	for (int i = 0; i < machines.size(); ++i) {
 		if (dists[i] < bestDist) {
 			bestDist = dists[i];
@@ -73,14 +94,16 @@ int main() {
 		}
 	}
 	assert(bestIndex >= 0);
+	
+	std::cout << "Finished finding best\n";
 
-	for (int i{0}; i < machineCount; ++i) {
-		if(dists[i] < INT_MAX) {
+	for (int i{0}; i < MACHINE_COUNT; ++i) {
+		if(dists[i] < std::numeric_limits<int>::max()) {
 			std::cout << machines[i].to_string() << '\n';
 		}
 	}
 
-	std::cout << bestIndex << " of " << machineCount - invalidCount << " valid machines\n" << machines[bestIndex].to_string();
+	std::cout << bestIndex << " of " << MACHINE_COUNT - invalidCount << " valid machines\n" << machines[bestIndex].to_string();
 
 	return 0;
 }
