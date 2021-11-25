@@ -36,7 +36,7 @@ int Machine::getTop() {
 void Machine::setInitial(int i) {
 	ip_ = 0;
 	while(!stack_.empty()) stack_.pop();
-	dynamic_cast<Immediate*>(instructions_[0].get())->set_value(i);
+	stack_.push(i);
 }
 
 std::string Machine::to_string() {
