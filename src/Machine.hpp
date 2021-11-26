@@ -8,26 +8,33 @@
 #include <vector>
 #include <stack>
 #include <memory>
-#include "instruction/Instruction.hpp"
 
 class Machine {
 public:
-	Instruction* fetch();
+	enum Instruction {
+		Immediate, Add, Sub, Mul, Div, Not, JumpZero, Copy, Halt
+	};
 
-	void execute(Instruction* instruction);
+	void step();
 
-	void addInstruction(std::unique_ptr<Instruction> instruction);
+	void pushCode(int code);
 
 	void setInitial(int i);
 
 	[[nodiscard]] bool running() const;
 
-	int getTop();
+	int immediate();
+
+	int& top();
+	int pop();
+	void push(int i);
 
 	std::string to_string();
 private:
-	std::stack<int> stack_{};
-	std::vector<std::unique_ptr<Instruction>> instructions_{};
+	static constexpr int STACK_SIZE{16};
+	std::array<int, STACK_SIZE> stack_{};
+	int stackPointer_ = -1;
+	std::vector<int> instructions_{};
 	int ip_{0};
 };
 
