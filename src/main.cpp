@@ -36,33 +36,40 @@ struct MachineStats {
 																 dist(dist) {}
 };
 
-struct RunResult {
+struct MachineRanking {
 	std::vector<MachineStats> bestMachines;
+	/** Maximum number of machines that are stored as "best" */
+	size_t maxMachines;
+
+	explicit MachineRanking(size_t maxMachines) : maxMachines(maxMachines) {}
+
+	/**
+	 * Insert a MachineStats object into the leaderboard if it is good enough or the number of machines is less than
+	 * maxMachines.
+	 * @param newStats This object will be compared.
+	 */
+	void insert(MachineStats newStats) {
+		int insertIndex = bestMachines.size();
+		for(int i = 0; i < bestMachines.size(); ++i) {
+			MachineStats &stats = bestMachines[i];
+			// smaller is better
+			if(stats.dist > newStats.dist) {
+				insertIndex = i;
+				break;
+			}
+		}
+
+		bestMachines.insert(bestMachines.begin() + insertIndex, newStats);
+		if(bestMachines.size() > maxMachines) bestMachines.pop_back();
+	}
 };
 
-static void insert(RunResult &runResult, MachineStats newStats) {
-	std::vector<MachineStats> &bestMachines = runResult.bestMachines;
-
-	int insertIndex = bestMachines.size();
-	for(int i = 0; i < bestMachines.size(); ++i) {
-		MachineStats &stats = bestMachines[i];
-		// smaller is better
-		if(stats.dist > newStats.dist) {
-			insertIndex = i;
-			break;
-		}
-	}
-
-	bestMachines.insert(bestMachines.begin() + insertIndex, newStats);
-	// todo: remove magic number
-	if(bestMachines.size() > 10) bestMachines.pop_back();
-}
-
-RunResult run(Instances &instances) {
+MachineRanking run(Instances &instances) {
 	constexpr int MAX_CYCLES{10};
 	constexpr int INITIAL_VALUES{1'000};
+	constexpr int MAX_BEST_MACHINES{10};
 
-	RunResult result;
+	MachineRanking result(MAX_BEST_MACHINES);
 	int invalidCount{};
 
 #pragma omp parallel for default(none) reduction(+:invalidCount) shared(result, instances)
@@ -100,7 +107,7 @@ RunResult run(Instances &instances) {
 		if(dist < std::numeric_limits<int>::max()) dist /= INITIAL_VALUES;
 
 #pragma omp critical
-		insert(result, MachineStats(i, &machine, dist));
+		result.insert(MachineStats(i, &machine, dist));
 
 		outer:;
 	}
@@ -113,7 +120,7 @@ int main() {
 
 	std::mt19937 random{0};
 
-	constexpr std::size_t MACHINE_COUNT{1'000'000};
+	constexpr std::size_t MACHINE_COUNT{10'000};
 	auto *machines = new Machine[MACHINE_COUNT];
 
 	for(int i = 0; i < MACHINE_COUNT; ++i) {
@@ -125,15 +132,15 @@ int main() {
 			.machines = machines,
 			.machineCount = MACHINE_COUNT
 	};
-	RunResult runResult = run(instances);
+	MachineRanking ranking = run(instances);
 	auto stop = std::chrono::high_resolution_clock::now();
 
 	std::cout << "Finished execution after "
 			  << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
 
 	std::cout << "\nevaluation:\n";
-	for(int i = 0; i < runResult.bestMachines.size(); ++i) {
-		auto &stats = runResult.bestMachines[i];
+	for(int i = 0; i < ranking.bestMachines.size(); ++i) {
+		auto &stats = ranking.bestMachines[i];
 		std::cout << "place #" << (i + 1) << " occupied by machine " << stats.machineIndex << " with dist "
 				  << stats.dist
 				  << "\n";
