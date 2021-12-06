@@ -15,7 +15,8 @@ void Machine::step() {
 		throw std::runtime_error{"Invalid instruction pointer!"};
 	}
 
-	switch (instructions_[ip_]) {
+	Instruction instr = instruction();
+	switch (instr) {
 		case Immediate:
 			push(immediate());
 			break;
@@ -42,22 +43,35 @@ void Machine::step() {
 			push(top());
 			break;
 		case Halt:
-			ip_ = -2;
+			ip_ = -1;
 			break;
+		default:
+			throw std::runtime_error{"Instruction out of range"};
 	}
-	ip_++;
 }
 
 void Machine::pushCode(int code) {
 	instructions_.push_back(code);
 }
 
+Machine::Instruction Machine::getInstructionAt(int location) {
+	return (Instruction)(instructions_[location] % INSTRUCTION_COUNT);
+}
+
+Machine::Instruction Machine::instruction() {
+	if(ip_ >= instructions_.size()) {
+		throw std::runtime_error{"Instruction pointer out of range"};
+	}
+
+	return getInstructionAt(ip_++);
+}
+
 int Machine::immediate() {
-	if(ip_ + 1 >= instructions_.size()) {
+	if(ip_ >= instructions_.size()) {
 		throw std::runtime_error{"Immediate expected"};
 	}
 
-	return instructions_[++ip_];
+	return instructions_[ip_++];
 }
 
 int& Machine::top() {
@@ -87,6 +101,26 @@ void Machine::push(int i) {
 	stack_[++stackPointer_] = i;
 }
 
+static uint8_t flipBit(uint8_t num, unsigned bitIndex) {
+	uint8_t mask = ~(1u << bitIndex);
+	uint8_t result = (num & mask) | ((!((num >> bitIndex) & 1u)) << bitIndex);
+	return result;
+}
+
+size_t Machine::mutate(std::mt19937 &random) {
+	size_t mutations = 0;
+	for(uint8_t &instr : instructions_) {
+		for(unsigned bitIndex = 0; bitIndex < 8; ++bitIndex) {
+			// todo: remove this magic number
+			if(std::uniform_real_distribution<>(0, 1)(random) < 0.06) {
+				instr = flipBit(instr, bitIndex);
+				++mutations;
+			}
+		}
+	}
+	return mutations;
+}
+
 void Machine::setInitial(int i) {
 	ip_ = 0;
 	stackPointer_ = -1;
@@ -98,9 +132,9 @@ std::string Machine::to_string() {
 	ss << "Machine:\n";
 	for (int i{0}; i < instructions_.size(); ++i) {
 		ss << i << ": ";
-		switch(instructions_[i]){
+		switch(instructions_[i] % INSTRUCTION_COUNT){
 			case Immediate:
-				ss << "Immediate{" << instructions_[++i] << "}";
+				ss << "Immediate{" << (int)instructions_[++i] << "}";
 				break;
 			case Add:
 				ss << "Add";
@@ -118,7 +152,7 @@ std::string Machine::to_string() {
 				ss << "Not";
 				break;
 			case JumpZero:
-				ss << "JumpZero{" << instructions_[++i] << "}";
+				ss << "JumpZero{" << (int)instructions_[++i] << "}";
 				break;
 			case Copy:
 				ss << "Copy";
@@ -131,4 +165,3 @@ std::string Machine::to_string() {
 	}
 	return ss.str();
 }
-
